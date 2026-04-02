@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.env.*
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Project Specific
+data/intermediate/*
+!data/intermediate/.gitkeep
+data/output/*
+!data/output/.gitkeep
+# (Optional) If you want to ignore input data as well, uncomment below:
+# data/input/*
+# !data/input/.gitkeep
+
+# IDEs / Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing / Code Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+
+# Build / Distribution
+dist/
+build/
+*.egg-info/
+
+# Logs
+logs/
+*.log
