@@ -3,9 +3,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+import re
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+_ABSOLUTE_PATH_RE = re.compile(r"^([/\\]|[A-Za-z]:)")
 
 
 class NodeType(str, Enum):
@@ -34,10 +37,10 @@ class LayerType(str, Enum):
 class PositionHint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    x: Optional[float] = None
-    y: Optional[float] = None
-    width: Optional[float] = Field(default=None, gt=0)
-    height: Optional[float] = Field(default=None, gt=0)
+    x: Optional[float] = Field(default=None, ge=0, description="레이아웃 x 좌표 힌트 (0 이상)")
+    y: Optional[float] = Field(default=None, ge=0, description="레이아웃 y 좌표 힌트 (0 이상)")
+    width: Optional[float] = Field(default=None, gt=0, description="레이아웃 너비 힌트 (양수)")
+    height: Optional[float] = Field(default=None, gt=0, description="레이아웃 높이 힌트 (양수)")
 
 
 class NodeMetadata(BaseModel):
@@ -47,13 +50,22 @@ class NodeMetadata(BaseModel):
     file_path: str = Field(
         ...,
         min_length=1,
-        description="소스 파일의 상대 경로 (repo root 기준)",
+        description="소스 파일의 상대 경로 (repo root 기준). 절대 경로는 허용하지 않는다.",
     )
     start_line: int = Field(..., ge=1)
     end_line: int = Field(..., ge=1)
     docstring: Optional[str] = None
     layer: LayerType = LayerType.unknown
     position_hint: Optional[PositionHint] = None
+
+    @field_validator("file_path")
+    @classmethod
+    def validate_relative_path(cls, v: str) -> str:
+        if _ABSOLUTE_PATH_RE.match(v):
+            raise ValueError(
+                f"file_path must be a relative path (repo root 기준), got: {v!r}"
+            )
+        return v
 
     @model_validator(mode="after")
     def validate_line_range(self) -> "NodeMetadata":
@@ -65,7 +77,12 @@ class NodeMetadata(BaseModel):
 class ASTNode(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = Field(..., min_length=1)
+    id: str = Field(
+        ...,
+        min_length=1,
+        pattern=r"^[\w][\w.]*$",
+        description="점(dot) 구분 식별자. 예: 'app.services.analysis_service'. 영문자·숫자·밑줄·점만 허용.",
+    )
     type: NodeType
     metadata: NodeMetadata
 

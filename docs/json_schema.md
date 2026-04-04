@@ -51,7 +51,7 @@ data/intermediate/analysis/<repo_name>.json
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `id` | `string` | Y | 고유 노드 식별자 (예: `"app.services.analysis_service.AnalysisService"`) |
+| `id` | `string` | Y | 고유 노드 식별자. **패턴: `^[\w][\w.]*$`** (영문·숫자·밑줄·점만 허용, 예: `"app.services.analysis_service"`) |
 | `type` | `NodeType` | Y | 노드 종류 |
 | `metadata` | `NodeMetadata` | Y | 상세 메타데이터 |
 
@@ -71,7 +71,7 @@ data/intermediate/analysis/<repo_name>.json
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `name` | `string` | Y | 노드 이름 (short name) |
-| `file_path` | `string` | Y | **repo root 기준 상대 경로** (예: `"app/services/analysis_service.py"`) |
+| `file_path` | `string` | Y | **repo root 기준 상대 경로** (패턴: `^(?![/\\]|[A-Za-z]:)` — 절대 경로 금지). 예: `"app/services/analysis_service.py"` |
 | `start_line` | `int (≥1)` | Y | 시작 라인 번호 |
 | `end_line` | `int (≥1)` | Y | 종료 라인 번호 (`≥ start_line`) |
 | `docstring` | `string \| null` | N | docstring 원문 |
@@ -117,8 +117,8 @@ data/intermediate/analysis/<repo_name>.json
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `x` | `float \| null` | N | 레이아웃 x 좌표 힌트 |
-| `y` | `float \| null` | N | 레이아웃 y 좌표 힌트 |
+| `x` | `float (≥0) \| null` | N | 레이아웃 x 좌표 힌트 (0 이상) |
+| `y` | `float (≥0) \| null` | N | 레이아웃 y 좌표 힌트 (0 이상) |
 | `width` | `float (>0) \| null` | N | 레이아웃 너비 힌트 |
 | `height` | `float (>0) \| null` | N | 레이아웃 높이 힌트 |
 
