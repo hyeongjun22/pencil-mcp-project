@@ -1,0 +1,18 @@
+{
+    "mcpServers": {
+        "pencil-mcp": {
+            "command": "node",
+            "args": [
+                "<pencil-mcp-server-entry-point>"
+            ],
+            "_comment": "args[0]에 Pencil MCP 서버 entry point JS 파일의 절대 경로를 입력하세요. 예: /path/to/pencil-mcp/dist/index.js"
+        }
+    },
+    "transport": {
+        "default": "stdio",
+        "sse": {
+            "host": "127.0.0.1",
+            "port": 8000
+        }
+    }
+}
