@@ -7,11 +7,10 @@
 ## 목차
 
 1. [Presentation 스키마](#presentation-스키마)
-2. [스키마 계층 구조](#스키마-계층-구조)
-3. [모델 상세](#모델-상세)
-4. [공통 Enum 타입](#공통-enum-타입)
-5. [핸드오프 계약](#핸드오프-계약)
-6. [예시 JSON](#예시-json)
+2. [Layout Plan 스키마](#layout-plan-스키마)
+3. [공통 Enum 타입](#공통-enum-타입)
+4. [핸드오프 계약](#핸드오프-계약)
+5. [예시 JSON](#예시-json)
 
 ---
 
@@ -154,6 +153,45 @@ Presentation (루트)
 
 ---
 
+## Layout Plan 스키마
+
+- **파일**: `app/models/layout_plan_schema.py`
+- **용도**: Stage 2 (Layout / Prompt Preparation)와 렌더링 오퍼레이션(Stage 3) 사이의 기하학적 공간 배치 정의
+- **소유자**: 임형준 (Visualization Owner)
+- **출력 경로**: `data/intermediate/layout_plans/`
+
+### 스키마 계층 구조
+
+```
+LayoutPlan (루트)
+├── LayoutPlanMeta                     — 메타정보
+└── LayoutNode                         — 최상위 노드 (root)
+    ├── node_id                        — 노드 ID
+    ├── node_type                      — 프레임 등(frame, text, image 등)
+    ├── width (SizeDefinition)         — 폭 (mode: fill/hug/fixed, value)
+    ├── height (SizeDefinition)        — 높이 (mode: fill/hug/fixed, value)
+    ├── direction                      — LayoutDirection
+    ├── flex_wrap                      — FlexWrap
+    ├── padding                        — 패딩 (int 또는 상하좌우 개별 지정 객체 PaddingModel)
+    ├── gap                            — 노드 간 갭
+    ├── alignment                      — 자식 수평 정렬
+    ├── vertical_alignment             — 자식 수직 정렬
+    ├── attributes                     — 부가 렌더링 속성(dict)
+    └── children[]                     — 하위 LayoutNode 목록 (재귀 구조)
+```
+
+### 모델 상세
+
+#### SizeDefinition & SizeMode
+- **SizeMode**: `fill_container` (FILL), `hug_contents` (HUG), `fixed` (FIXED)
+- 고정 폭인 경우만 `value` (int) 속성을 사용.
+
+#### PaddingModel
+상하좌우에 각각 다른 여백이 필요할 시 사용.
+- `top`, `right`, `bottom`, `left` (모두 int, 기본값 0)
+
+---
+
 ## 공통 Enum 타입
 
 파일: `app/models/common.py`
@@ -231,6 +269,14 @@ Presentation (루트)
 
 소비자 측에서는 반드시 `Presentation.model_validate()`를 호출하여
 입력 데이터의 유효성을 검증해야 합니다.
+
+### Layout 파이프라인 핸드오프
+
+| 항목 | 내용 |
+|---|---|
+| **소비자** | `app/tools/op_compiler.py` (Stage 3) |
+| **산출물** | `data/intermediate/layout_plans/*.json` |
+| **스키마 검증** | `LayoutPlan.model_validate(data)` |
 
 ---
 
