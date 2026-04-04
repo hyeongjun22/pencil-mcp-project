@@ -280,6 +280,38 @@ LayoutPlan (루트)
 
 ---
 
+## Render Ops 스키마
+
+- **파일**: `app/models/render_ops_schema.py`
+- **용도**: Stage 3 (Render Execution)에서 Pencil MCP 호출용 오퍼레이션 데이터 정의
+- **소유자**: 최지웅 (Orchestration Owner)
+- **출력 경로**: `data/intermediate/render_ops/`
+
+### 스키마 계층 구조
+
+```
+RenderPlan (루트)
+├── plan_id                        — 렌더 플랜 고유 식별자
+├── layout_plan_id                 — 원본 레이아웃 플랜 식별자
+├── total_chunks                   — 총 청크 수
+└── chunks[]                       — 렌더를 실행할 청크 리스트 (RenderChunk)
+    ├── chunk_index                — 청크 순서 인덱스
+    └── operations[]               — 오퍼레이션 리스트 (최대 25개, RenderOp Union)
+        ├── op_type                — RenderOpType Enum (I, C, U, R, M, D, G)
+        ├── binding                — 변수명 (선택)
+        └── (각 타입별 필드들)      — parent, node_data, path, update_data 등
+```
+
+### 핸드오프 계약 특이사항 (Stage 3)
+
+- **생산자**: `app/tools/op_compiler.py` (Layout Plan을 해석하여 생성)
+- **데이터 흐름**: `data/intermediate/render_ops/*.json`에 저장 후 사용
+- **소비자 (포맷터)**: `app/tools/pencil_proxy_executor.py`
+  - JSON으로 정의된 `RenderOp`를 읽어 Pencil MCP `batch_design` 파라미터 규격에 맞는 **Javascript 문자열 (예: `foo=I(...)`)로 치환**하는 역할을 수행.
+  - `node_data`는 렌더링 호환성 유지를 위해 엄격한 타입 대신 `dict[str, Any]` 형태 사용.
+
+---
+
 ## 예시 JSON
 
 ```json
