@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+*.egg
 
 # Environments
 .env
@@ -28,6 +30,8 @@ data/output/*
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
 Thumbs.db
 
