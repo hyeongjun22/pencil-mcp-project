@@ -19,13 +19,13 @@
 
 구체적인 문제:
 
-1. `generated_at`이 `str`로 정의되어 datetime 형식 보장이 없음
-2. `summary.total_nodes` / `total_edges`가 실제 `len(nodes)` / `len(edges)`와 불일치해도 오류 없음
-3. 아키텍처 요약 텍스트(`arch_summary`) 필드 없음 → Stage 2 프롬프트 생성 불가
-4. 주요 진입점(`entry_points`), 최상위 모듈(`top_level_modules`) 없음 → 레이아웃 구조 파악 불가
-5. 스키마 버전(`schema_version`) 없음 → 호환성 관리 불가
-6. `file_path`의 절대/상대경로 기준 미정의
-7. `docs/json_schema.md` 계약 문서가 비어 있어 Stage 2가 스키마 계약을 알 수 없음
+- [x] 1. `generated_at`이 `str`로 정의되어 datetime 형식 보장이 없음
+- [x] 2. `summary.total_nodes` / `total_edges`가 실제 `len(nodes)` / `len(edges)`와 불일치해도 오류 없음
+- [x] 3. 아키텍처 요약 텍스트(`arch_summary`) 필드 없음 → Stage 2 프롬프트 생성 불가
+- [x] 4. 주요 진입점(`entry_points`), 최상위 모듈(`top_level_modules`) 없음 → 레이아웃 구조 파악 불가
+- [x] 5. 스키마 버전(`schema_version`) 없음 → 호환성 관리 불가
+- [x] 6. `file_path`의 절대/상대경로 기준 미정의 — description 추가(이 브랜치), validator 강제(feat/REQ-AST-JSON-002)
+- [x] 7. `docs/json_schema.md` 계약 문서가 비어 있어 Stage 2가 스키마 계약을 알 수 없음
 
 ---
 
