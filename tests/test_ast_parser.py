@@ -164,6 +164,46 @@ class TestEdgeReferenceIntegrity:
             ASTAnalysisSchema(**data)
 
 
+# ── DAG 순환 참조 무결성 검사 ────────────────────────────────────────────────
+
+class TestGraphCycleDetection:
+    def test_contains_edge_cycle_raises(self):
+        """contains 엣지에서 사이클이 발생하면 ValidationError 가 발생해야 한다."""
+        data = _valid_schema()
+        node_c = _node("mod.c")
+        data["nodes"].append(node_c)
+        data["edges"] = [
+            ASTEdge(source="mod.a", target="mod.b", type=EdgeType.contains),
+            ASTEdge(source="mod.b", target="mod.c", type=EdgeType.contains),
+            ASTEdge(source="mod.c", target="mod.a", type=EdgeType.contains),
+        ]
+        data["summary"] = _summary(total_files=2, total_nodes=3, total_edges=3)
+        with pytest.raises(ValidationError, match="circular reference detected in contains edges"):
+            ASTAnalysisSchema(**data)
+
+    def test_inherits_edge_cycle_raises(self):
+        """inherits 엣지에서 사이클이 발생하면 ValidationError 가 발생해야 한다."""
+        data = _valid_schema()
+        data["edges"] = [
+            ASTEdge(source="mod.a", target="mod.b", type=EdgeType.inherits),
+            ASTEdge(source="mod.b", target="mod.a", type=EdgeType.inherits),
+        ]
+        data["summary"] = _summary(total_files=2, total_nodes=2, total_edges=2)
+        with pytest.raises(ValidationError, match="circular reference detected in inherits edges"):
+            ASTAnalysisSchema(**data)
+
+    def test_imports_edge_cycle_passes(self):
+        """imports 엣지에서는 사이클이 발생해도 통과해야 한다."""
+        data = _valid_schema()
+        data["edges"] = [
+            ASTEdge(source="mod.a", target="mod.b", type=EdgeType.imports),
+            ASTEdge(source="mod.b", target="mod.a", type=EdgeType.imports),
+        ]
+        data["summary"] = _summary(total_files=2, total_nodes=2, total_edges=2)
+        schema = ASTAnalysisSchema(**data)
+        assert len(schema.edges) == 2
+
+
 # ── Summary Count 일관성 ─────────────────────────────────────────────────────
 
 

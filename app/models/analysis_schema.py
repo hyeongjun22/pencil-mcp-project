@@ -165,6 +165,39 @@ class ASTAnalysisSchema(BaseModel):
             if edge.target not in node_ids:
                 raise ValueError(f"edge target not found in nodes: {edge.target}")
 
+        # 방향성 비순환 그래프(DAG) 특성 검증: contains, inherits 엣지에 사이클이 있는지 확인
+        def has_cycle(target_edge_type: EdgeType) -> bool:
+            adj = {nid: set() for nid in node_ids}
+            for e in self.edges:
+                if e.type == target_edge_type:
+                    adj[e.source].add(e.target)
+
+            visited = set()
+            rec_stack = set()
+
+            def dfs(v: str) -> bool:
+                visited.add(v)
+                rec_stack.add(v)
+                for neighbor in adj[v]:
+                    if neighbor not in visited:
+                        if dfs(neighbor):
+                            return True
+                    elif neighbor in rec_stack:
+                        return True
+                rec_stack.remove(v)
+                return False
+
+            for nid in node_ids:
+                if nid not in visited:
+                    if dfs(nid):
+                        return True
+            return False
+
+        if has_cycle(EdgeType.contains):
+            raise ValueError(f"circular reference detected in {EdgeType.contains.value} edges")
+        if has_cycle(EdgeType.inherits):
+            raise ValueError(f"circular reference detected in {EdgeType.inherits.value} edges")
+
         # summary count 일관성
         if self.summary.total_nodes != len(self.nodes):
             raise ValueError(
