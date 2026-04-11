@@ -3,7 +3,7 @@ tests/test_ast_parser.py
 
 ASTAnalysisSchema 유효성 검증 테스트.
 
-REQ: REQ-ANL-001
+REQ: REQ-AST-JSON-001, REQ-AST-JSON-002
 Owner: 이수민 (Analysis Owner)
 """
 
@@ -21,6 +21,7 @@ from app.models.analysis_schema import (
     LayerType,
     NodeMetadata,
     NodeType,
+    PositionHint,
 )
 
 
@@ -194,3 +195,101 @@ class TestUniqueNodeIds:
         data["summary"] = _summary(total_files=1, total_nodes=2, total_edges=0)
         with pytest.raises(ValidationError, match="node ids must be unique"):
             ASTAnalysisSchema(**data)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# REQ-AST-JSON-002 — 필수 필드 제약 조건
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestPositionHintConstraints:
+    """PositionHint 좌표 제약 (REQ-AST-JSON-002)."""
+
+    def test_negative_x_raises(self):
+        """x 좌표가 음수이면 ValidationError."""
+        with pytest.raises(ValidationError):
+            PositionHint(x=-1.0, y=0.0)
+
+    def test_negative_y_raises(self):
+        """y 좌표가 음수이면 ValidationError."""
+        with pytest.raises(ValidationError):
+            PositionHint(x=0.0, y=-5.0)
+
+    def test_zero_coordinates_passes(self):
+        """x=0, y=0 은 허용된다."""
+        hint = PositionHint(x=0.0, y=0.0, width=10.0, height=10.0)
+        assert hint.x == 0.0
+        assert hint.y == 0.0
+
+    def test_positive_coordinates_passes(self):
+        """양수 좌표는 정상 통과."""
+        hint = PositionHint(x=100.0, y=200.0, width=50.0, height=30.0)
+        assert hint.x == 100.0
+
+
+class TestNodeIdPattern:
+    """ASTNode.id 형식 제약 (REQ-AST-JSON-002)."""
+
+    def test_valid_dot_separated_id(self):
+        """점(dot) 구분 식별자는 통과."""
+        node = _node("app.services.analysis_service")
+        assert node.id == "app.services.analysis_service"
+
+    def test_underscore_id_passes(self):
+        """밑줄 포함 식별자는 통과."""
+        node = _node("my_module")
+        assert node.id == "my_module"
+
+    def test_space_in_id_raises(self):
+        """공백이 포함된 id 는 ValidationError."""
+        with pytest.raises(ValidationError):
+            _node("app foo")
+
+    def test_special_chars_in_id_raises(self):
+        """특수문자(@, -, /)가 포함된 id 는 ValidationError."""
+        with pytest.raises(ValidationError):
+            _node("app/foo")
+        with pytest.raises(ValidationError):
+            _node("app-bar")
+        with pytest.raises(ValidationError):
+            _node("app@baz")
+
+    def test_dot_only_id_raises(self):
+        """점(dot)으로 시작하는 id 는 ValidationError."""
+        with pytest.raises(ValidationError):
+            _node(".leading.dot")
+
+
+class TestFilePathConstraints:
+    """NodeMetadata.file_path 절대경로 금지 (REQ-AST-JSON-002)."""
+
+    def test_relative_path_passes(self):
+        """상대 경로는 정상 통과."""
+        meta = NodeMetadata(
+            name="foo", file_path="app/foo.py", start_line=1, end_line=10
+        )
+        assert meta.file_path == "app/foo.py"
+
+    def test_unix_absolute_path_raises(self):
+        """Unix 절대 경로(/로 시작)는 ValidationError."""
+        with pytest.raises(ValidationError):
+            NodeMetadata(
+                name="foo", file_path="/home/user/foo.py",
+                start_line=1, end_line=10,
+            )
+
+    def test_windows_absolute_path_raises(self):
+        """Windows 절대 경로(C:\\)는 ValidationError."""
+        with pytest.raises(ValidationError):
+            NodeMetadata(
+                name="foo", file_path="C:\\Users\\foo.py",
+                start_line=1, end_line=10,
+            )
+
+    def test_backslash_absolute_path_raises(self):
+        """백슬래시로 시작하는 경로는 ValidationError."""
+        with pytest.raises(ValidationError):
+            NodeMetadata(
+                name="foo", file_path="\\server\\share\\foo.py",
+                start_line=1, end_line=10,
+            )
