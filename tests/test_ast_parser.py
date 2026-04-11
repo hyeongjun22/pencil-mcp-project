@@ -164,6 +164,46 @@ class TestEdgeReferenceIntegrity:
             ASTAnalysisSchema(**data)
 
 
+# ── DAG 순환 참조 무결성 검사 ────────────────────────────────────────────────
+
+class TestGraphCycleDetection:
+    def test_contains_edge_cycle_raises(self):
+        """contains 엣지에서 사이클이 발생하면 ValidationError 가 발생해야 한다."""
+        data = _valid_schema()
+        node_c = _node("mod.c")
+        data["nodes"].append(node_c)
+        data["edges"] = [
+            ASTEdge(source="mod.a", target="mod.b", type=EdgeType.contains),
+            ASTEdge(source="mod.b", target="mod.c", type=EdgeType.contains),
+            ASTEdge(source="mod.c", target="mod.a", type=EdgeType.contains),
+        ]
+        data["summary"] = _summary(total_files=2, total_nodes=3, total_edges=3)
+        with pytest.raises(ValidationError, match="circular reference detected in contains edges"):
+            ASTAnalysisSchema(**data)
+
+    def test_inherits_edge_cycle_raises(self):
+        """inherits 엣지에서 사이클이 발생하면 ValidationError 가 발생해야 한다."""
+        data = _valid_schema()
+        data["edges"] = [
+            ASTEdge(source="mod.a", target="mod.b", type=EdgeType.inherits),
+            ASTEdge(source="mod.b", target="mod.a", type=EdgeType.inherits),
+        ]
+        data["summary"] = _summary(total_files=2, total_nodes=2, total_edges=2)
+        with pytest.raises(ValidationError, match="circular reference detected in inherits edges"):
+            ASTAnalysisSchema(**data)
+
+    def test_imports_edge_cycle_passes(self):
+        """imports 엣지에서는 사이클이 발생해도 통과해야 한다."""
+        data = _valid_schema()
+        data["edges"] = [
+            ASTEdge(source="mod.a", target="mod.b", type=EdgeType.imports),
+            ASTEdge(source="mod.b", target="mod.a", type=EdgeType.imports),
+        ]
+        data["summary"] = _summary(total_files=2, total_nodes=2, total_edges=2)
+        schema = ASTAnalysisSchema(**data)
+        assert len(schema.edges) == 2
+
+
 # ── Summary Count 일관성 ─────────────────────────────────────────────────────
 
 
@@ -293,3 +333,63 @@ class TestFilePathConstraints:
                 name="foo", file_path="\\server\\share\\foo.py",
                 start_line=1, end_line=10,
             )
+
+# ══════════════════════════════════════════════════════════════════════════════
+# REQ-AST-JSON-003 — Analysis 결과 직렬화
+# ══════════════════════════════════════════════════════════════════════════════
+
+import json
+from app.services.analysis_service import AnalysisService, _ANALYSIS_DIR
+
+class TestAnalysisSerialization:
+    """AnalysisService 직렬화/역직렬화 (REQ-AST-JSON-003)."""
+
+    def test_save_and_load_roundtrip(self, monkeypatch, tmp_path):
+        """저장 후 불러온 객체가 원본과 동일해야 한다."""
+        monkeypatch.setattr("app.services.analysis_service._ANALYSIS_DIR", tmp_path)
+        
+        schema = ASTAnalysisSchema(**_valid_schema())
+        
+        # Save
+        saved_path = AnalysisService.save(schema, "test_repo")
+        assert saved_path.exists()
+        assert saved_path.name == "test_repo.json"
+        
+        # Load
+        loaded_schema = AnalysisService.load("test_repo")
+        
+        # Verify
+        assert loaded_schema.repo == schema.repo
+        assert len(loaded_schema.nodes) == len(schema.nodes)
+        assert len(loaded_schema.edges) == len(schema.edges)
+        assert loaded_schema.summary.total_nodes == schema.summary.total_nodes
+
+    def test_save_creates_directory(self, monkeypatch, tmp_path):
+        """저장 시 대상 디렉토리가 없으면 자동 생성된다."""
+        target_dir = tmp_path / "deep" / "nested" / "dir"
+        monkeypatch.setattr("app.services.analysis_service._ANALYSIS_DIR", target_dir)
+        
+        schema = ASTAnalysisSchema(**_valid_schema())
+        assert not target_dir.exists()
+        
+        saved_path = AnalysisService.save(schema, "new_repo")
+        assert target_dir.exists()
+        assert saved_path.is_file()
+
+    def test_invalid_repo_name_raises(self):
+        """경로 순회 문자가 포함된 repo_name은 예외를 발생시켜야 한다."""
+        schema = ASTAnalysisSchema(**_valid_schema())
+        invalid_names = ["../my_repo", "repo/name", "file.json", " "]
+        
+        for name in invalid_names:
+            with pytest.raises(ValueError, match="허용되지 않는 문자"):
+                AnalysisService.save(schema, name)
+            with pytest.raises(ValueError, match="허용되지 않는 문자"):
+                AnalysisService.load(name)
+
+    def test_load_missing_file_raises(self, monkeypatch, tmp_path):
+        """존재하지 않는 repo_name을 로드하려 하면 FileNotFoundError 발생."""
+        monkeypatch.setattr("app.services.analysis_service._ANALYSIS_DIR", tmp_path)
+        
+        with pytest.raises(FileNotFoundError, match="분석 아티팩트를 찾을 수 없음"):
+            AnalysisService.load("non_existent_repo")
